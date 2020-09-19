@@ -1,2 +1,4 @@
 .idea
 test_audio
+build
+np_sound.egg-info
