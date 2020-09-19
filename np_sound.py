@@ -36,6 +36,13 @@ class NPSound:
             self.sample_rate, self.signal = 1, np.zeros((1,))
         self.filepath = filepath
 
+    def copy(self):
+        out = NPSound()
+        out.filepath = self.filepath
+        out.sample_rate = self.sample_rate
+        out.signal = self.signal
+        return out
+
     def plot(self, title: str = "np-sound:self.filepath", layerd_plots: List = None,
              adjacent_plots: List = None, legend: List[str] = None):
         """
@@ -90,14 +97,14 @@ class NPSound:
             return self.signal[start:]
         return self.signal[start: end]
 
-    def seconds_to_frames(self, seconds: int):
+    def seconds_to_frames(self, seconds: float):
         """
         :param seconds: Seconds to be converted to frames
         :return: Frame equivalent of input seconds
         """
-        return seconds * self.sample_rate
+        return int(seconds * self.sample_rate)
 
-    def truncate_by_threshold(self, threshold: float, selection: Tuple[int, int] = None):
+    def truncate_by_threshold(self, threshold: float, selection: Tuple[float, float] = None):
         """
         :param threshold: Audio threshold to truncate by
         :param selection: Only truncate this selection of audio
@@ -116,7 +123,7 @@ class NPSound:
         return from_array(out_signal, sample_rate=self.sample_rate,
                           filepath=self.filepath[:-4] + "(Threshold " + str(threshold) + ").wav")
 
-    def reverse(self, selection: Tuple[int, int] = None):
+    def reverse(self, selection: Tuple[float, float] = None):
         """
         :param selection: Only truncate this selection of audio
         :return: NPSound object with reversed audio
@@ -133,7 +140,7 @@ class NPSound:
         out_signal = out_signal.reshape((int(out_signal.size / 2), 2))
         return from_array(out_signal, sample_rate=self.sample_rate, filepath=self.filepath[:-4] + "(Reversed).wav")
 
-    def invert(self, selection: Tuple[int, int] = None):
+    def invert(self, selection: Tuple[float, float] = None):
         """
         :param selection: Only truncate this selection of audio
         :return: NPSound object with inverted audio
@@ -149,6 +156,28 @@ class NPSound:
                            self.signal[selection[1]:] if selection[1] > 0 else np.array([])])
         out_signal = out_signal.reshape((int(out_signal.size / 2), 2))
         return from_array(out_signal, sample_rate=self.sample_rate, filepath=self.filepath[:-4] + "(Inverted).wav")
+
+    def shift_octaves(self, n: int):
+        if n == 0:
+            return self
+        shift = 2.0 ** float(n)
+        copy = self.copy()
+        copy.filepath += "(Shifted {} octaves)".format(n)
+        copy.sample_rate = int(copy.sample_rate * shift)
+        return copy
+
+    def amplify(self, percentage: float = 0, selection: Tuple[float, float] = None):
+        if selection is None:
+            return from_array(self.signal * (1 + (percentage / 100)), sample_rate=self.sample_rate,
+                              filepath=self.filepath[:-4] + "(Inverted).wav")
+        selection = (self.seconds_to_frames(selection[0]), self.seconds_to_frames(selection[1]))
+        selected_signal = self.selection(selection[0], selection[1])
+        modified_selection = selected_signal * (1 + (percentage / 100))
+        out_signal = join([self.signal[0: selection[0]],
+                           modified_selection,
+                           self.signal[selection[1]:] if selection[1] > 0 else np.array([])])
+        out_signal = out_signal.reshape((int(out_signal.size / 2), 2))
+        return from_array(out_signal, sample_rate=self.sample_rate, filepath=self.filepath[:-4] + "(Amplified {} percent).wav".format(percentage))
 
     def write(self, filepath: str = None):
         """
@@ -172,3 +201,4 @@ class NPSound:
         return "Filepath: {}\nLength: {}s\nSample Rate: {}\nSignal Shape: {}\n".format(self.filepath, self.len(),
                                                                                        self.sample_rate,
                                                                                        self.signal.shape)
+
