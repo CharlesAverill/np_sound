@@ -256,8 +256,12 @@ class NPSound:
         if not isinstance(other, int):
             raise RuntimeError("Cannot multiply type NPSound by type {}".format(str(type(other))))
         out = self.copy()
+        temp_fp = out.filepath
+
         for i in range(other):
             out += self.copy()
+
+        out.filepath = temp_fp[:-4] + "x{}".format(other) + ".wav"
         return out
 
     def __len__(self):
