@@ -177,7 +177,8 @@ class NPSound:
                            modified_selection,
                            self.signal[selection[1]:] if selection[1] > 0 else np.array([])])
         out_signal = out_signal.reshape((int(out_signal.size / 2), 2))
-        return from_array(out_signal, sample_rate=self.sample_rate, filepath=self.filepath[:-4] + "(Amplified {} percent).wav".format(percentage))
+        return from_array(out_signal, sample_rate=self.sample_rate,
+                          filepath=self.filepath[:-4] + "(Amplified {} percent).wav".format(percentage))
 
     def write(self, filepath: str = None):
         """
@@ -194,6 +195,23 @@ class NPSound:
     def len(self):
         return len(self.signal) / self.sample_rate
 
+    def __add__(self, other):
+        out = self.copy()
+        if isinstance(other, np.ndarray):
+            if out.signal.shape[1] != other.shape[1]:
+                raise Exception("Dimensionality of np.ndarray does not match the signal. Signal Shape {}, np.ndarray "
+                                "Shape {}".format(self.signal.shape, other.shape))
+            out.signal = np.concatenate((self.signal, other), axis=0)
+        elif isinstance(other, NPSound):
+            if out.signal.shape[1] != other.signal.shape[1]:
+                raise RuntimeError("Dimensionality of NPSound does not match the signal. Signal Shape {}, NPSound "
+                                   "Shape {}".format(self.signal.shape, other.signal.shape))
+            if out.sample_rate != other.sample_rate:
+                raise RuntimeError("Sample rates do not match. {}, {}".format(self.sample_rate, other.sample_rate))
+            out.signal = np.concatenate((self.signal, other.signal), axis=0)
+            out.filepath = out.filepath[:-4] + "_" + other.filepath
+        return out
+
     def __len__(self):
         return int(self.len())
 
@@ -202,3 +220,8 @@ class NPSound:
                                                                                        self.sample_rate,
                                                                                        self.signal.shape)
 
+
+sound1 = NPSound("out000.wav")
+sound2 = NPSound("out005.wav")
+
+(sound1 + sound2).write()
