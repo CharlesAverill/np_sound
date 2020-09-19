@@ -1,0 +1,9 @@
+README.md
+setup.py
+np_sound/__init__.py
+np_sound/np_sound.py
+np_sound.egg-info/PKG-INFO
+np_sound.egg-info/SOURCES.txt
+np_sound.egg-info/dependency_links.txt
+np_sound.egg-info/requires.txt
+np_sound.egg-info/top_level.txt

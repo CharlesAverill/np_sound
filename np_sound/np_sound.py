@@ -6,6 +6,12 @@ from typing import List, Tuple
 
 
 def from_array(array: np.ndarray, sample_rate: int = 1, filepath: str = "NPSound.wav"):
+    """
+    :param array: Array to convert into NPSound object
+    :param sample_rate: Sample Rate of NPSound object
+    :param filepath: Filepath of NPSound object
+    :return: NPSound with desired parameters
+    """
     out = NPSound()
     out.signal = array
     out.sample_rate = sample_rate
@@ -26,7 +32,7 @@ def join(signals: List[np.ndarray]):
 
 class NPSound:
 
-    def __init__(self, filepath: str = None):
+    def __init__(self, filepath: str = "NPSound.wav"):
         """
         :param filepath: Path to wav file
         """
@@ -37,20 +43,22 @@ class NPSound:
         self.filepath = filepath
 
     def copy(self):
+        """
+        :return: copy of this NPSound object
+        """
         out = NPSound()
         out.filepath = self.filepath
         out.sample_rate = self.sample_rate
         out.signal = self.signal
         return out
 
-    def plot(self, title: str = "np-sound:self.filepath", layerd_plots: List = None,
+    def plot(self, title: str = "np_sound:self.filepath", layered_plots: List = None,
              adjacent_plots: List = None, legend: List[str] = None):
         """
         :param title: Plot Supertitle
-        :param layerd_plots: Plots to layer on top of the NDSound's plot
-        :param adjacent_plots: Plots to place next to the NDSound's plot
-        :param legend: Legend for the NDSound's plot
-        :return:
+        :param layered_plots: Plots to layer on top of the NPSound's plot
+        :param adjacent_plots: Plots to place next to the NPSound's plot
+        :param legend: Legend for the NPSound's plot
         """
         fig, axs = plt.subplots(1 + (len(adjacent_plots) if adjacent_plots is not None else 0))
         fig.tight_layout(pad=3)
@@ -60,22 +68,22 @@ class NPSound:
 
         true_title = self.filepath
 
-        if layerd_plots is not None and len(layerd_plots) > 0:
-            for plot in layerd_plots:
+        if layered_plots is not None and len(layered_plots) > 0:
+            for plot in layered_plots:
                 if isinstance(plot, NPSound):
-                    if title == "np-sound:self.filepath":
+                    if title == "np_sound:self.filepath":
                         true_title += ", " + plot.filepath
                     base.plot(np.linspace(0, len(plot.signal) / plot.sample_rate, num=len(plot.signal)), plot.signal)
                 else:
                     base.plot(plot)
 
-        base.set_title(true_title if title == "np-sound:self.filepath" else title)
+        base.set_title(true_title if title == "np_sound:self.filepath" else title)
 
         if adjacent_plots is not None and len(adjacent_plots) > 0:
             for x in range(1, len(adjacent_plots) + 1):
                 i = x - 1
                 if isinstance(adjacent_plots[i], NPSound):
-                    if title == "np-sound:self.filepath":
+                    if title == "np_sound:self.filepath":
                         axs[x].set_title(adjacent_plots[i].filepath)
                     axs[x].plot(np.linspace(0, len(adjacent_plots[i].signal) / adjacent_plots[i].sample_rate,
                                             num=len(adjacent_plots[i].signal)), adjacent_plots[i].signal)
@@ -105,6 +113,11 @@ class NPSound:
         return int(seconds * self.sample_rate)
 
     def _after_modify(self, out_signal: np.ndarray, new_filepath: str):
+        """
+        :param out_signal: Signal to process
+        :param new_filepath: New filepath for output NPSound object
+        :return: Processed NPSound object
+        """
         if out_signal.shape[0] % 2 != 0:
             out_signal = np.pad(out_signal, (0, 1), 'edge')
         out_signal = out_signal.reshape((int(out_signal.size / 2), 2))
