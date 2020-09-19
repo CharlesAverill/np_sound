@@ -87,7 +87,7 @@ class NPSound:
 
         plt.show()
 
-    def selection(self, start: int, end: int):
+    def _selection(self, start: float, end: float):
         """
         :param start: Starting point in seconds
         :param end: Ending point in seconds
@@ -104,6 +104,12 @@ class NPSound:
         """
         return int(seconds * self.sample_rate)
 
+    def _after_modify(self, out_signal: np.ndarray, new_filepath: str):
+        if out_signal.shape[0] % 2 != 0:
+            out_signal = np.pad(out_signal, (0, 1), 'edge')
+        out_signal = out_signal.reshape((int(out_signal.size / 2), 2))
+        return from_array(out_signal, sample_rate=self.sample_rate, filepath=new_filepath)
+
     def truncate_by_threshold(self, threshold: float, selection: Tuple[float, float] = None):
         """
         :param threshold: Audio threshold to truncate by
@@ -111,17 +117,15 @@ class NPSound:
         :return: NPSound object with truncated signal
         """
         if selection is None:
-            return from_array(self.signal[abs(self.signal) >= threshold], sample_rate=self.sample_rate,
-                              filepath=self.filepath[:-4] + "(Threshold " + str(threshold) + ").wav")
+            out_signal = self.signal[abs(self.signal) >= threshold]
+            return self._after_modify(out_signal, self.filepath[:-4] + "(Threshold " + str(threshold) + ").wav")
         selection = (self.seconds_to_frames(selection[0]), self.seconds_to_frames(selection[1]))
-        selected_signal = self.selection(selection[0], selection[1])
+        selected_signal = self._selection(selection[0], selection[1])
         modified_selection = selected_signal[abs(selected_signal) >= threshold]
         out_signal = join([self.signal[0: selection[0]],
                            modified_selection,
                            self.signal[selection[1]:] if selection[1] > 0 else np.array([])])
-        out_signal = out_signal.reshape((int(out_signal.size / 2), 2))
-        return from_array(out_signal, sample_rate=self.sample_rate,
-                          filepath=self.filepath[:-4] + "(Threshold " + str(threshold) + ").wav")
+        return self._after_modify(out_signal, self.filepath[:-4] + "(Threshold " + str(threshold) + ").wav")
 
     def reverse(self, selection: Tuple[float, float] = None):
         """
@@ -129,16 +133,15 @@ class NPSound:
         :return: NPSound object with reversed audio
         """
         if selection is None:
-            return from_array(np.flip(self.signal), sample_rate=self.sample_rate,
-                              filepath=self.filepath[:-4] + "(Reversed).wav")
+            out_signal = np.flip(self.signal)
+            return self._after_modify(out_signal, self.filepath[:-4] + "(Reversed).wav")
         selection = (self.seconds_to_frames(selection[0]), self.seconds_to_frames(selection[1]))
-        selected_signal = self.selection(selection[0], selection[1])
+        selected_signal = self._selection(selection[0], selection[1])
         modified_selection = np.flip(selected_signal)
         out_signal = join([self.signal[0: selection[0]],
                            modified_selection,
                            self.signal[selection[1]:] if selection[1] > 0 else np.array([])])
-        out_signal = out_signal.reshape((int(out_signal.size / 2), 2))
-        return from_array(out_signal, sample_rate=self.sample_rate, filepath=self.filepath[:-4] + "(Reversed).wav")
+        return self._after_modify(out_signal, self.filepath[:-4] + "(Reversed).wav")
 
     def invert(self, selection: Tuple[float, float] = None):
         """
@@ -146,18 +149,21 @@ class NPSound:
         :return: NPSound object with inverted audio
         """
         if selection is None:
-            return from_array(-self.signal, sample_rate=self.sample_rate,
-                              filepath=self.filepath[:-4] + "(Inverted).wav")
+            out_signal = -self.signal
+            return self._after_modify(out_signal, self.filepath[:-4] + "(Inverted).wav")
         selection = (self.seconds_to_frames(selection[0]), self.seconds_to_frames(selection[1]))
-        selected_signal = self.selection(selection[0], selection[1])
+        selected_signal = self._selection(selection[0], selection[1])
         modified_selection = -selected_signal
         out_signal = join([self.signal[0: selection[0]],
                            modified_selection,
                            self.signal[selection[1]:] if selection[1] > 0 else np.array([])])
-        out_signal = out_signal.reshape((int(out_signal.size / 2), 2))
-        return from_array(out_signal, sample_rate=self.sample_rate, filepath=self.filepath[:-4] + "(Inverted).wav")
+        return self._after_modify(out_signal, self.filepath[:-4] + "(Inverted).wav")
 
     def shift_octaves(self, n: int):
+        """
+        :param n: Number of octaves to shift
+        :return: Shifted audio
+        """
         if n == 0:
             return self
         shift = 2.0 ** float(n)
@@ -167,18 +173,39 @@ class NPSound:
         return copy
 
     def amplify(self, percentage: float = 0, selection: Tuple[float, float] = None):
+        """
+        :param percentage: Amplify audio by this %
+        :param selection: Only amplify this selection of audio
+        :return: Amplified audio
+        """
         if selection is None:
-            return from_array(self.signal * (1 + (percentage / 100)), sample_rate=self.sample_rate,
-                              filepath=self.filepath[:-4] + "(Inverted).wav")
+            out_signal = self.signal * (1 + (percentage / 100))
+            return self._after_modify(out_signal, self.filepath[:-4] + "(Amplified {} percent).wav".format(percentage))
         selection = (self.seconds_to_frames(selection[0]), self.seconds_to_frames(selection[1]))
-        selected_signal = self.selection(selection[0], selection[1])
+        selected_signal = self._selection(selection[0], selection[1])
         modified_selection = selected_signal * (1 + (percentage / 100))
         out_signal = join([self.signal[0: selection[0]],
                            modified_selection,
                            self.signal[selection[1]:] if selection[1] > 0 else np.array([])])
-        out_signal = out_signal.reshape((int(out_signal.size / 2), 2))
-        return from_array(out_signal, sample_rate=self.sample_rate,
-                          filepath=self.filepath[:-4] + "(Amplified {} percent).wav".format(percentage))
+        return self._after_modify(out_signal, self.filepath[:-4] + "(Amplified {} percent).wav".format(percentage))
+
+    def pad(self, seconds: Tuple[float, float]):
+        """
+        :param seconds: Tuple defining how much whitespace to append to (start, end) of sound file
+        :return: Padded audio
+        """
+        frames = (self.seconds_to_frames(seconds[0]), self.seconds_to_frames(seconds[1]))
+
+        start_padding = np.zeros((frames[0], 2))
+        end_padding = np.zeros((frames[1], 2))
+
+        out = from_array(start_padding, sample_rate=self.sample_rate)
+        out += self
+        out += from_array(end_padding, sample_rate=self.sample_rate)
+
+        out.filepath = self.filepath[:-4] + "(Padded ({}, {})).wav".format(seconds[0], seconds[1])
+
+        return out
 
     def write(self, filepath: str = None):
         """
@@ -203,13 +230,21 @@ class NPSound:
                                 "Shape {}".format(self.signal.shape, other.shape))
             out.signal = np.concatenate((self.signal, other), axis=0)
         elif isinstance(other, NPSound):
-            if out.signal.shape[1] != other.signal.shape[1]:
+            if len(out.signal.shape) + len(other.signal.shape) < 2 and out.signal.shape[1] != other.signal.shape[1]:
                 raise RuntimeError("Dimensionality of NPSound does not match the signal. Signal Shape {}, NPSound "
                                    "Shape {}".format(self.signal.shape, other.signal.shape))
             if out.sample_rate != other.sample_rate:
                 raise RuntimeError("Sample rates do not match. {}, {}".format(self.sample_rate, other.sample_rate))
             out.signal = np.concatenate((self.signal, other.signal), axis=0)
             out.filepath = out.filepath[:-4] + "_" + other.filepath
+        return out
+
+    def __mul__(self, other):
+        if not isinstance(other, int):
+            raise RuntimeError("Cannot multiply type NPSound by type {}".format(str(type(other))))
+        out = self.copy()
+        for i in range(other):
+            out += self.copy()
         return out
 
     def __len__(self):
@@ -219,9 +254,3 @@ class NPSound:
         return "Filepath: {}\nLength: {}s\nSample Rate: {}\nSignal Shape: {}\n".format(self.filepath, self.len(),
                                                                                        self.sample_rate,
                                                                                        self.signal.shape)
-
-
-sound1 = NPSound("out000.wav")
-sound2 = NPSound("out005.wav")
-
-(sound1 + sound2).write()
