@@ -121,7 +121,6 @@ class NPSound:
         if out_signal.shape[0] % 2 != 0:
             out_signal = np.pad(out_signal, (0, 1), 'edge')
         out_signal = out_signal.reshape((int(out_signal.size / 2), 2))
-        print(out_signal.shape)
         return from_array(out_signal, sample_rate=self.sample_rate, filepath=new_filepath)
 
     def truncate_by_threshold(self, threshold: float, selection: Tuple[float, float] = None):
@@ -175,7 +174,6 @@ class NPSound:
                                      self.signal.T[1][start_slice:end_slice]),
                                     axis=0)
         out.signal = out.signal.reshape((2, int(out.signal.size / 2))).T
-        print(out.signal.shape)
 
         out.filepath = out.filepath[:-4] + "(Clipped).wav"
 
