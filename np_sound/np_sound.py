@@ -32,7 +32,7 @@ def join(signals: List[np.ndarray]):
 
 class NPSound:
 
-    def __init__(self, filepath: str = "NPSound.wav"):
+    def __init__(self, filepath: str = None):
         """
         :param filepath: Path to wav file
         """
@@ -40,7 +40,7 @@ class NPSound:
             self.sample_rate, self.signal = wavfile.read(filepath)
         else:
             self.sample_rate, self.signal = 1, np.zeros((1,))
-        self.filepath = filepath
+        self.filepath = filepath if filepath is not None else "NPSound.wav"
 
     def copy(self):
         """
@@ -121,6 +121,7 @@ class NPSound:
         if out_signal.shape[0] % 2 != 0:
             out_signal = np.pad(out_signal, (0, 1), 'edge')
         out_signal = out_signal.reshape((int(out_signal.size / 2), 2))
+        print(out_signal.shape)
         return from_array(out_signal, sample_rate=self.sample_rate, filepath=new_filepath)
 
     def truncate_by_threshold(self, threshold: float, selection: Tuple[float, float] = None):
@@ -139,6 +140,46 @@ class NPSound:
                            modified_selection,
                            self.signal[selection[1]:] if selection[1] > 0 else np.array([])])
         return self._after_modify(out_signal, self.filepath[:-4] + "(Threshold " + str(threshold) + ").wav")
+
+    def clip_at_threshold(self, threshold: float, end_threshold: float = None):
+        """
+        :param threshold: Threshold to clip both ends of the audio at, or the start of the audio if end_threshold is
+                          defined
+        :param end_threshold: Threshold to clip the end of the audio at
+        :return: Audio that has been clipped according to thresholds
+        """
+        if end_threshold is None:
+            end_threshold = threshold
+
+        start_slice, end_slice = -1, -1
+
+        # Find start_slice index
+        for i in range(len(self.signal.T[0])):
+            y1, y2 = self.signal.T[0][i], self.signal.T[1][i]
+            avg = (y1 + y2) / 2
+            if avg >= threshold:
+                start_slice = i
+                break
+
+        # Find end_slice index
+        for i in range(len(self.signal.T[0])).__reversed__():
+            y1, y2 = self.signal.T[0][i], self.signal.T[1][i]
+            avg = (y1 + y2) / 2
+            if avg >= end_threshold:
+                end_slice = i
+                break
+
+        out = self.copy()
+
+        out.signal = np.concatenate((self.signal.T[0][start_slice:end_slice],
+                                     self.signal.T[1][start_slice:end_slice]),
+                                    axis=0)
+        out.signal = out.signal.reshape((2, int(out.signal.size / 2))).T
+        print(out.signal.shape)
+
+        out.filepath = out.filepath[:-4] + "(Clipped).wav"
+
+        return out
 
     def reverse(self, selection: Tuple[float, float] = None):
         """

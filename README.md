@@ -36,4 +36,7 @@ sound.plot(layered_plots=[sound.amplify(-50)])
 
 # Plot a 'sound' object padded with 5.5s of empty data on either end below the original 'sound'
 sound.plot(adjacent_plots=[sound.pad((5.5, 5.5))])
+
+# Trim audio on both ends so that the first and last values are above 100
+sound.clip_at_threshold(100)
 ```
